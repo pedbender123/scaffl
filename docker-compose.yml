@@ -1,0 +1,29 @@
+version: '3.8'
+
+volumes:
+  scaffl_db:
+
+services:
+  scaffl:
+    build: .
+    volumes:
+      - scaffl_db:/app/server/database
+    env_file:
+      - .env
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      # Router para o domínio de teste instantâneo
+      - "traefik.http.routers.scaffl-dev.entrypoints=websecure"
+      - "traefik.http.routers.scaffl-dev.rule=Host(`scaffl.pbpmdev.com`)"
+      - "traefik.http.routers.scaffl-dev.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.scaffl-dev.service=scaffl-service"
+
+      # Router para o domínio de produção definitivo
+      - "traefik.http.routers.scaffl-prod.entrypoints=websecure"
+      - "traefik.http.routers.scaffl-prod.rule=Host(`scaffl.com.br`) || Host(`www.scaffl.com.br`)"
+      - "traefik.http.routers.scaffl-prod.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.scaffl-prod.service=scaffl-service"
+
+      # Serviço compartilhado
+      - "traefik.http.services.scaffl-service.loadbalancer.server.port=3001"

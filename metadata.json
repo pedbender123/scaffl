@@ -1,0 +1,5 @@
+{
+  "name": "TutorAI",
+  "description": "Plataforma de chatbots tutores de ensino com personalização de tema e limite de tokens.",
+  "requestFramePermissions": []
+}
