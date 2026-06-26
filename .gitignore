@@ -24,6 +24,9 @@ production_vps_credentials.json
 tutorai_backup_producao/
 json_exports/
 
+# Documentação local (não vai para nenhum remote)
+LEIA-ME-ANTES-DE-COMMITAR.md
+
 # Diretórios temporários de IDEs e editores
 .vscode/
 .idea/

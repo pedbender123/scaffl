@@ -1,7 +1,10 @@
 import { LabProject } from './labAgent.types.js';
 import { getProvider, getDefaultModel, calcCredits } from './providers/registry.js';
+import { getModelQueue, retryWithFallback } from './limiter.js';
+import { logQuotaEvent } from './quota.js';
 
 const FALLBACK_MODEL = 'gemini-2.5-flash';
+
 
 const LAB_WRITER_SYSTEM_PROMPT = `Você é a IA Escritora de Simuladores Científicos do Scaffl.
 Sua missão é gerar um código HTML5 autocontido (incluindo HTML, Tailwind CSS para estilos e JavaScript para física/lógica no Canvas) com base nas ideias dos estudantes.
@@ -23,24 +26,22 @@ export interface SimAgentResult {
   patchedFunctions: string[];
   tokensUsed: number;
   creditsUsed: number;
+  modelUsed: string;
 }
 
-async function _runSimAgentInternal(params: {
+async function _callModel(params: {
   project: LabProject;
   userMessage: string;
   recentMessages: Array<{ role: string; content: string }>;
-  modelToUse?: string;
+  modelId: string;
   userImageUrl?: string;
 }): Promise<SimAgentResult> {
-  const { project, userMessage, recentMessages, userImageUrl } = params;
-
-  const modelId = params.modelToUse ?? getDefaultModel()?.id ?? FALLBACK_MODEL;
+  const { project, userMessage, recentMessages, modelId, userImageUrl } = params;
 
   const currentHtml = project.htmlContent || '';
   const historyParts: string[] = [];
   if (recentMessages?.length > 0) {
-    const recent = recentMessages.slice(-4);
-    for (const m of recent) {
+    for (const m of recentMessages.slice(-4)) {
       historyParts.push(`${m.role === 'user' ? 'Usuário' : 'IA'}: ${m.content.slice(0, 500)}`);
     }
   }
@@ -63,18 +64,18 @@ async function _runSimAgentInternal(params: {
 
   console.log(`[Lab Agent] Calling ${modelId}...`);
 
-  const provider = getProvider(modelId);
-  const chatResult = await provider.chat({
-    messages: [{ role: 'user', content: userPrompt }],
-    systemPrompt: LAB_WRITER_SYSTEM_PROMPT,
-    modelId,
-    imageBase64,
-    imageMimeType: 'image/jpeg',
-  });
+  const queue = getModelQueue(modelId);
+  const chatResult = await queue.enqueue(() =>
+    getProvider(modelId).chat({
+      messages: [{ role: 'user', content: userPrompt }],
+      systemPrompt: LAB_WRITER_SYSTEM_PROMPT,
+      modelId,
+      imageBase64,
+      imageMimeType: 'image/jpeg',
+    })
+  );
 
   const rawText = chatResult.text;
-
-  // Extract HTML from markdown code block
   let cleanedHtml = rawText;
   const htmlMatch = rawText.match(/```html([\s\S]*?)```/);
   if (htmlMatch) {
@@ -86,7 +87,9 @@ async function _runSimAgentInternal(params: {
   const creditsUsed = calcCredits(modelId, chatResult.inputTokens, chatResult.cachedTokens, chatResult.outputTokens);
   const tokensUsed = chatResult.inputTokens + chatResult.outputTokens;
 
-  console.log(`[Lab Agent] Done. Model: ${modelId}, Tokens: in=${chatResult.inputTokens}, cached=${chatResult.cachedTokens}, out=${chatResult.outputTokens} | Credits: ${creditsUsed}`);
+  console.log(
+    `[Lab Agent] Done. Model: ${modelId}, in=${chatResult.inputTokens}, cached=${chatResult.cachedTokens}, out=${chatResult.outputTokens}, credits=${creditsUsed}`
+  );
 
   return {
     explanation: 'Simulador atualizado com sucesso.',
@@ -98,10 +101,9 @@ async function _runSimAgentInternal(params: {
     patchedFunctions: [],
     tokensUsed,
     creditsUsed,
+    modelUsed: modelId,
   };
 }
-
-let labAgentQueue: Promise<any> = Promise.resolve();
 
 export async function runSimAgent(params: {
   project: LabProject;
@@ -109,9 +111,24 @@ export async function runSimAgent(params: {
   recentMessages: Array<{ role: string; content: string }>;
   modelToUse?: string;
   userImageUrl?: string;
+  userId?: string;
 }): Promise<SimAgentResult> {
-  const result = await (labAgentQueue = labAgentQueue
-    .catch(() => {})
-    .then(() => _runSimAgentInternal(params)));
-  return result;
+  const { userId } = params;
+
+  // Build the fallback chain: requested/default → Flash
+  const primary = params.modelToUse ?? getDefaultModel()?.id ?? FALLBACK_MODEL;
+  const chain = primary === FALLBACK_MODEL
+    ? [FALLBACK_MODEL]
+    : [primary, FALLBACK_MODEL];
+
+  const factories = chain.map((modelId) => () =>
+    _callModel({ ...params, modelId })
+  );
+
+  return retryWithFallback(factories, (fromIndex, err) => {
+    const fromModel = chain[fromIndex];
+    console.warn(`[Lab Agent] ${fromModel} failed (${(err as any)?.status ?? (err as any)?.message}), falling back to ${chain[fromIndex + 1]}`);
+    logQuotaEvent({ userId, surface: 'lab', event: 'fallback', model: fromModel });
+    logQuotaEvent({ userId, surface: 'lab', event: '429', model: fromModel });
+  });
 }

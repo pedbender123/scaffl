@@ -349,6 +349,34 @@ if (modelCount === 0) {
 import { runSimAgentMigration } from './migrations/add_simagent_columns.js';
 runSimAgentMigration(db);
 
+// Onda 2: quota system columns
+const _quotaCols = db.prepare("PRAGMA table_info(users)").all() as any[];
+const _quotaMigrations: { name: string; sql: string }[] = [
+  { name: 'plan',                    sql: "ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'" },
+  { name: 'lab_req_today',           sql: "ALTER TABLE users ADD COLUMN lab_req_today INTEGER DEFAULT 0" },
+  { name: 'lab_req_today_reset',     sql: "ALTER TABLE users ADD COLUMN lab_req_today_reset TEXT" },
+  { name: 'lab_req_week',            sql: "ALTER TABLE users ADD COLUMN lab_req_week INTEGER DEFAULT 0" },
+  { name: 'lab_req_week_reset',      sql: "ALTER TABLE users ADD COLUMN lab_req_week_reset TEXT" },
+  { name: 'petrus_credits_week',     sql: "ALTER TABLE users ADD COLUMN petrus_credits_week INTEGER DEFAULT 0" },
+  { name: 'petrus_credits_week_reset', sql: "ALTER TABLE users ADD COLUMN petrus_credits_week_reset TEXT" },
+];
+for (const m of _quotaMigrations) {
+  if (!_quotaCols.find((c: any) => c.name === m.name)) db.exec(m.sql);
+}
+
+// Quota metrics table for instrumentation (RPM, 429s, spills, fallbacks)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS quota_metrics (
+    id TEXT PRIMARY KEY,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    surface TEXT NOT NULL,
+    event TEXT NOT NULL,
+    model TEXT,
+    userId TEXT,
+    credits INTEGER DEFAULT 0
+  );
+`);
+
 // Ensure system user exists
 db.prepare(`
   INSERT OR IGNORE INTO users (id, name, email, password, role, isAdmin)

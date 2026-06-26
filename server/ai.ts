@@ -4,6 +4,7 @@ import db from './db.js';
 import { buildSystemPromptV3 } from './promptBuilder.js';
 import { getActiveKey, calcCredits } from './providers/registry.js';
 import { config } from './config.js';
+import { checkPetrusQuota, recordPetrusCredits, logQuotaEvent } from './quota.js';
 
 // Global state for Gemini traffic shaping (5 RPM / 250k TPM)
 let lastRequestTime = 0;
@@ -15,16 +16,18 @@ const TPM_WINDOW_MS = 60000;
 // const GPT_RATE = 1.3;
 
 /**
- * Returns credit/project limits for a user.
- * In self-hosted mode every user gets unlimited resources — the operator pays their own API bills.
- * In cloud mode: users without an institution get the free tier; those with one get the base tier.
+ * Returns project limits for a user.
+ * Credit limits are now managed by quota.ts (weekly, per-surface).
+ * In self-hosted mode every user gets unlimited resources.
  */
 export function getUserCreditLimit(userId: string): { creditLimit: number; projectLimit: number } {
   if (config.isSelfHosted) {
     return { creditLimit: Infinity, projectLimit: Infinity };
   }
   const rows = db.prepare('SELECT institutionId FROM user_institutions WHERE userId = ?').all(userId) as { institutionId: string }[];
-  return rows.length > 0
+  const user = db.prepare("SELECT plan FROM users WHERE id = ?").get(userId) as { plan: string } | undefined;
+  const isPro = user?.plan === 'pro';
+  return rows.length > 0 || isPro
     ? { creditLimit: 1_000_000, projectLimit: 10 }
     : { creditLimit: 100_000,   projectLimit: 5  };
 }
@@ -121,20 +124,12 @@ async function _generateChatResponse(
     throw new Error('Limite de 50k tokens por requisição excedido.');
   }
 
-  // 2. Monthly Credit Limit: 1M credits per user (last 30 days) — soma chat + lab
-  const monthlyChat = db.prepare(`
-    SELECT SUM(creditsUsed) as total FROM messages
-    WHERE userId = ? AND createdAt >= DATETIME('now', '-30 days')
-  `).get(userId) as { total: number };
-  const monthlyLab = db.prepare(`
-    SELECT SUM(creditsUsed) as total FROM lab_messages
-    WHERE userId = ? AND createdAt >= DATETIME('now', '-30 days')
-  `).get(userId) as { total: number };
-  const currentMonthlyTotal = (monthlyChat?.total || 0) + (monthlyLab?.total || 0);
-  const { creditLimit } = getUserCreditLimit(userId);
-  if (currentMonthlyTotal > creditLimit) {
-    const limitLabel = creditLimit >= 1_000_000 ? '1M' : '100k';
-    throw new Error(`Limite mensal de ${limitLabel} créditos atingido.`);
+  // 2. Weekly Petrus credit quota
+  if (config.isCloud) {
+    const quotaCheck = checkPetrusQuota(userId);
+    if (!quotaCheck.allowed) {
+      throw new Error(quotaCheck.reason ?? 'Limite de créditos atingido.');
+    }
   }
 
   // Build system prompt — usa override se fornecido, senão busca persona do chat
@@ -309,6 +304,11 @@ async function _generateChatResponse(
     const modelId = provider === 'google' ? 'gemini-2.5-flash' : 'gpt-4o-mini';
     const creditsUsed = calcCredits(modelId, inputTokFinal, cachedTok, outputTokFinal);
     console.log(`[AI] Request completed. Chat: ${chatId}, Model: ${modelId}, Credits: ${creditsUsed} (cached: ${cachedTok}, input: ${inputTokFinal}, output: ${outputTokFinal})`);
+
+    if (config.isCloud) {
+      recordPetrusCredits(userId, creditsUsed);
+      logQuotaEvent({ userId, surface: 'petrus', event: 'request', model: modelId, credits: creditsUsed });
+    }
 
     return { text, tokensUsed, creditsUsed };
 
