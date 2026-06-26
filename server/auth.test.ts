@@ -10,7 +10,7 @@ function validateEmail(email: string): boolean {
 
 describe('Email Format Validation', () => {
   it('should accept valid emails', () => {
-    assert.strictEqual(validateEmail('test@ucs.br'), true);
+    assert.strictEqual(validateEmail('test@example.com'), true);
     assert.strictEqual(validateEmail('aluno.teste@universidade.edu'), true);
     assert.strictEqual(validateEmail('test@gmail.com'), true);
   });

@@ -40,7 +40,8 @@ async function loginAs(email: string, password: string): Promise<string> {
 }
 
 async function setupTestUser(inviteCode: string): Promise<{ token: string; userId: string; email: string }> {
-  const email = `sectest_runner_${Date.now()}@ucs.br`;
+  const adminDomain = (process.env.SUPER_ADMIN_EMAIL || 'admin@example.com').split('@')[1] ?? 'example.com';
+  const email = `sectest_runner_${Date.now()}@${adminDomain}`;
   const password = 'SecTest!9876';
   const regRes = await fetch(`${BASE_URL}/api/auth/register`, {
     method: 'POST',

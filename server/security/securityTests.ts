@@ -129,8 +129,8 @@ export const SECURITY_TESTS: SecurityTest[] = [
     severity: 'medium',
     async run(base, _ctx) {
       const id = 'AUTH-005'; const n = 'Enumeração de contas (mensagens de erro)'; const c = 'Autenticação'; const s: Severity = 'medium';
-      const resNoUser = await hit(base, '/api/auth/login', { method: 'POST', body: { email: 'definitivamente_nao_existe_xyzabc@ucs.br', password: 'qualquercoisa' } });
-      const resWrongPwd = await hit(base, '/api/auth/login', { method: 'POST', body: { email: 'system@tutorai.edu', password: 'senhaerrada123' } });
+      const resNoUser = await hit(base, '/api/auth/login', { method: 'POST', body: { email: 'definitivamente_nao_existe_xyzabc@example.invalid', password: 'qualquercoisa' } });
+      const resWrongPwd = await hit(base, '/api/auth/login', { method: 'POST', body: { email: 'system@scaffl.local', password: 'senhaerrada123' } });
       const b1 = await resNoUser.json().catch(() => ({})) as any;
       const b2 = await resWrongPwd.json().catch(() => ({})) as any;
       if (b1.error === b2.error) return pass(id, n, c, s, 'Mensagens de erro idênticas para email inexistente e senha errada — sem enumeração.');
@@ -333,7 +333,7 @@ export const SECURITY_TESTS: SecurityTest[] = [
     async run(base, ctx) {
       const id = 'INFO-002'; const n = 'Password hash no response de login'; const c = 'Information Disclosure'; const s: Severity = 'high';
       // Try registering a temp user and check if password leaks
-      const tempEmail = `sectest_${Date.now()}@ucs.br`;
+      const tempEmail = `sectest_${Date.now()}@example.com`;
       const regRes = await hit(base, '/api/auth/register', {
         method: 'POST',
         body: {

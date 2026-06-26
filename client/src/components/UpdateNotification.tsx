@@ -70,8 +70,8 @@ export default function UpdateNotification() {
             />
             <UpdateItem 
               icon={<CheckCircle2 className="w-5 h-5 text-blue-500" />}
-              title="Rigor Institucional (@ucs.br)"
-              description="Agora o registro público é restrito à comunidade acadêmica da UCS."
+              title="Cadastro por Convite"
+              description="O registro de novos usuários agora requer um código de convite de sala de aula."
             />
             <UpdateItem 
               icon={<Rocket className="w-5 h-5 text-purple-500" />}

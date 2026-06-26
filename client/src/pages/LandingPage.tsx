@@ -809,7 +809,7 @@ export default function LandingPage() {
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:18, marginBottom:28 }}>
           <div style={{ background: PANEL, border:`1px solid ${LINE}`, borderRadius:16, padding:26 }}>
             <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:'0.67rem', color: a2, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>{t('abResearcher')}</div>
-            <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'1.05rem', color: TX, marginBottom:4 }}>Pedro Bender Randon</div>
+            <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'1.05rem', color: TX, marginBottom:4 }}>{t('abResearcherName') ?? 'Lead Researcher'}</div>
             <div style={{ fontSize:'0.82rem', color: TX2 }}>{t('ftInst')}</div>
           </div>
           <div style={{ background: PANEL, border:`1px solid ${LINE}`, borderRadius:16, padding:26 }}>
@@ -1276,7 +1276,7 @@ export default function LandingPage() {
             {lang==='pt' ? 'SCAFFL como Instrumento de Pesquisa' : lang==='en' ? 'SCAFFL as a Research Instrument' : 'SCAFFL como Instrumento de Investigación'}
           </h1>
           <p style={{ color:TX2, fontSize:'0.92rem', fontFamily:"'JetBrains Mono',monospace" }}>
-            Pedro Bender Randon · Prof. Dr. Agostinho Serrano de Andrade Neto · CIAGE / UCS
+            Prof. Dr. Agostinho Serrano de Andrade Neto · CIAGE / UCS
           </p>
         </div>
       </div>
@@ -1750,7 +1750,7 @@ export default function LandingPage() {
                     <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:'0.67rem', color:a2, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:14 }}>
                       {lang==='pt' ? 'Pesquisador Principal' : lang==='en' ? 'Lead Researcher' : 'Investigador Principal'}
                     </div>
-                    <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'1.05rem', color:TX, marginBottom:4 }}>Pedro Bender Randon</div>
+                    <div style={{ fontFamily:"'Space Grotesk',sans-serif", fontWeight:700, fontSize:'1.05rem', color:TX, marginBottom:4 }}>{t('abResearcherName') ?? 'Lead Researcher'}</div>
                     <div style={{ fontSize:'0.83rem', color:TX2, marginBottom:12 }}>CIAGE · PPGECiMa · UCS</div>
                     <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:'0.72rem', color:TX3 }}>FAPERGS · PROBIC · 2025–2026</div>
                   </div>
@@ -1876,7 +1876,7 @@ export default function LandingPage() {
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:24 }}>
               <div>
                 <div style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:'0.67rem', color: TX3, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:8 }}>{t('ftResearcher')}</div>
-                <div style={{ fontWeight:700, color: TX, marginBottom:4 }}>Pedro Bender Randon</div>
+                <div style={{ fontWeight:700, color: TX, marginBottom:4 }}>{t('abResearcherName') ?? 'Lead Researcher'}</div>
                 <div style={{ fontSize:'0.82rem', color: TX2 }}>{t('ftInst')}</div>
               </div>
               <div>

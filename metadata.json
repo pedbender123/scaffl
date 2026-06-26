@@ -1,5 +1,5 @@
 {
-  "name": "TutorAI",
-  "description": "Plataforma de chatbots tutores de ensino com personalização de tema e limite de tokens.",
+  "name": "Scaffl",
+  "description": "Self-hosted AI education platform with BYOK, classroom management and simulation lab.",
   "requestFramePermissions": []
 }

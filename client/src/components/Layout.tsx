@@ -415,7 +415,7 @@ export default function Layout() {
                 <Sparkles size={18} className="animate-pulse" />
               </div>
               <div className="text-xs md:text-sm text-indigo-50 leading-relaxed">
-                <span className="font-extrabold text-white">Comunicado Importante:</span> Olá! Pedimos sinceras desculpas em nome do <span className="font-bold text-white">Prof. Pedro</span> pelas instabilidades e lentidões recentes no servidor devido à sobrecarga de acessos. Nosso time restabeleceu a estabilidade e ajustou as cotas de uso de IA. O assistente de IA <span className="font-extrabold text-white">Petrus</span> agora está ativo e conta com uma ferramenta para te fornecer o link direto do WhatsApp do professor para suporte personalizado!
+                <span className="font-extrabold text-white">Novidade:</span> O assistente de IA <span className="font-extrabold text-white">Petrus</span> está ativo! Converse com ele para tirar dúvidas, explorar conceitos e receber orientações socrática durante seus estudos.
               </div>
             </div>
             <button 
