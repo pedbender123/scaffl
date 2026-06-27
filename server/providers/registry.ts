@@ -57,6 +57,11 @@ function getKeyFromEnv(provider: string): { key: string; baseUrl?: string } | nu
       const k = process.env.GEMINI_API_KEY?.trim();
       return k ? { key: k } : null;
     }
+    // Separate free-tier key for Gemma models (RPM/RPD-limited, cost=0)
+    case 'google-free': {
+      const k = (process.env.GEMINI_FREE_KEY ?? process.env.GEMINI_API_KEY)?.trim();
+      return k ? { key: k } : null;
+    }
     case 'anthropic': {
       const k = process.env.ANTHROPIC_API_KEY?.trim();
       return k ? { key: k } : null;
@@ -74,9 +79,10 @@ function getKeyFromEnv(provider: string): { key: string; baseUrl?: string } | nu
 
 function buildProvider(providerId: string, key: string, baseUrl?: string): AIProvider {
   switch (providerId) {
-    case 'google':    return createGoogleProvider(key);
-    case 'anthropic': return createAnthropicProvider(key);
-    default:          return createOpenAICompatibleProvider(key, baseUrl);
+    case 'google':
+    case 'google-free': return createGoogleProvider(key);
+    case 'anthropic':   return createAnthropicProvider(key);
+    default:            return createOpenAICompatibleProvider(key, baseUrl);
   }
 }
 

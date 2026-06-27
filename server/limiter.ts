@@ -1,12 +1,93 @@
 /**
- * Per-model request queue with token-bucket semantics.
+ * Per-model request queue + RPD (requests-per-day) tracking for free-tier models.
  *
- * Serialises Lab AI calls by model so a classroom burst doesn't exhaust
- * the API quota. Each model gets its own FIFO queue; requests execute one
- * at a time (concurrency = 1) with a configurable inter-request gap.
+ * Free models (Gemma 4 31B / 26B):
+ *   - 15 RPM → 4 500 ms minimum gap between requests in the same model queue
+ *   - 1 500 RPD → hard daily cap tracked in memory, seeded from quota_metrics on startup
  *
- * Fallback chain callers wrap individual model calls with retryWithFallback.
+ * Paid models (Gemini Flash, etc.):
+ *   - 1 000 ms minimum gap (conservative; API limits are much higher)
+ *   - No RPD cap enforced here (handled by spend caps / billing)
  */
+
+import db from './db.js';
+
+// ── Model-specific rate-limit config ─────────────────────────────────────────
+
+interface ModelLimits {
+  gapMs: number;        // min ms between consecutive requests in the queue
+  rpdLimit: number;     // daily request cap (Infinity = no cap)
+}
+
+const FREE_GAP_MS = 4_500;  // 15 RPM = 1 per 4s → +500 ms safety margin
+const PAID_GAP_MS = 1_000;
+
+const MODEL_LIMITS: Record<string, ModelLimits> = {
+  'gemma-4-31b-it':     { gapMs: FREE_GAP_MS, rpdLimit: 1_500 },
+  'gemma-4-26b-a4b-it': { gapMs: FREE_GAP_MS, rpdLimit: 1_500 },
+};
+
+function getLimits(modelId: string): ModelLimits {
+  return MODEL_LIMITS[modelId] ?? { gapMs: PAID_GAP_MS, rpdLimit: Infinity };
+}
+
+// ── RPD in-memory tracker ─────────────────────────────────────────────────────
+
+interface RpdEntry { date: string; count: number }
+const rpdCounters = new Map<string, RpdEntry>();
+let rpdSeeded = false;
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Seeds RPD counters from quota_metrics on first call so server restarts don't reset them. */
+function ensureSeeded(): void {
+  if (rpdSeeded) return;
+  rpdSeeded = true;
+  const today = todayIso();
+  try {
+    const rows = db.prepare(`
+      SELECT model, COUNT(*) as cnt
+      FROM quota_metrics
+      WHERE event = 'request' AND model IS NOT NULL
+        AND ts >= datetime('now', 'start of day')
+      GROUP BY model
+    `).all() as { model: string; cnt: number }[];
+    for (const { model, cnt } of rows) {
+      rpdCounters.set(model, { date: today, count: cnt });
+    }
+  } catch {
+    // quota_metrics may not exist yet on a fresh install — that's fine
+  }
+}
+
+export function getRPDCount(modelId: string): number {
+  ensureSeeded();
+  const today = todayIso();
+  const entry = rpdCounters.get(modelId);
+  if (!entry || entry.date !== today) return 0;
+  return entry.count;
+}
+
+export function incrementRPD(modelId: string): void {
+  ensureSeeded();
+  const today = todayIso();
+  const entry = rpdCounters.get(modelId);
+  if (!entry || entry.date !== today) {
+    rpdCounters.set(modelId, { date: today, count: 1 });
+  } else {
+    entry.count++;
+  }
+}
+
+export function isRPDExhausted(modelId: string): boolean {
+  const { rpdLimit } = getLimits(modelId);
+  if (rpdLimit === Infinity) return false;
+  return getRPDCount(modelId) >= rpdLimit;
+}
+
+// ── Per-model FIFO queue ──────────────────────────────────────────────────────
 
 interface QueueItem<T> {
   fn: () => Promise<T>;
@@ -18,8 +99,7 @@ class ModelQueue {
   private readonly queue: QueueItem<unknown>[] = [];
   private running = false;
 
-  // Minimum gap between consecutive requests to this model (ms)
-  constructor(private readonly minGapMs: number = 1_000) {}
+  constructor(private readonly minGapMs: number) {}
 
   get depth(): number { return this.queue.length; }
 
@@ -50,21 +130,18 @@ class ModelQueue {
 
 const queues = new Map<string, ModelQueue>();
 
-/** Returns (creating if needed) the queue for a given model. */
 export function getModelQueue(modelId: string): ModelQueue {
   if (!queues.has(modelId)) {
-    // 1-second gap between requests to the same model — keeps RPM well under API limits
-    queues.set(modelId, new ModelQueue(1_000));
+    queues.set(modelId, new ModelQueue(getLimits(modelId).gapMs));
   }
   return queues.get(modelId)!;
 }
 
-/** Current backlog depth for a model (0 if queue doesn't exist yet). */
 export function getQueueDepth(modelId: string): number {
   return queues.get(modelId)?.depth ?? 0;
 }
 
-// ── Fallback chain helper ────────────────────────────────────────────────────
+// ── Fallback chain helper ─────────────────────────────────────────────────────
 
 function sleep(ms: number): Promise<void> {
   return new Promise(r => setTimeout(r, ms));
@@ -89,10 +166,9 @@ function isRetryable(err: unknown): boolean {
 }
 
 /**
- * Tries each factory in the chain in order.
- * On a retryable error (429 / timeout / 503) it waits with jitter and
- * tries the next model. Non-retryable errors throw immediately.
- * onFallback is called before each retry so callers can log the event.
+ * Tries each factory in order.
+ * On 429 / timeout / 503 it waits with jitter and falls back to the next factory.
+ * Non-retryable errors throw immediately.
  */
 export async function retryWithFallback<T>(
   factories: Array<() => Promise<T>>,

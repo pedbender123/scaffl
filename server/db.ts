@@ -373,9 +373,20 @@ db.exec(`
     event TEXT NOT NULL,
     model TEXT,
     userId TEXT,
-    credits INTEGER DEFAULT 0
+    tokens_in INTEGER DEFAULT 0,
+    tokens_out INTEGER DEFAULT 0,
+    credits INTEGER DEFAULT 0,
+    was_spill INTEGER DEFAULT 0
   );
 `);
+
+// Idempotent column additions for instances that already have the table
+(function migrateQuotaMetrics() {
+  const cols = (db.prepare("PRAGMA table_info(quota_metrics)").all() as any[]).map((c: any) => c.name);
+  if (!cols.includes('tokens_in'))  db.exec("ALTER TABLE quota_metrics ADD COLUMN tokens_in INTEGER DEFAULT 0");
+  if (!cols.includes('tokens_out')) db.exec("ALTER TABLE quota_metrics ADD COLUMN tokens_out INTEGER DEFAULT 0");
+  if (!cols.includes('was_spill'))  db.exec("ALTER TABLE quota_metrics ADD COLUMN was_spill INTEGER DEFAULT 0");
+})();
 
 // Ensure system user exists
 db.prepare(`

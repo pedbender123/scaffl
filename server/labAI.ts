@@ -1,10 +1,13 @@
 import { LabProject } from './labAgent.types.js';
 import { getProvider, getDefaultModel, calcCredits } from './providers/registry.js';
-import { getModelQueue, retryWithFallback } from './limiter.js';
+import { getModelQueue, retryWithFallback, isRPDExhausted, incrementRPD } from './limiter.js';
 import { logQuotaEvent } from './quota.js';
 
-const FALLBACK_MODEL = 'gemini-2.5-flash';
-
+// Full fallback chain for the Lab, ordered by preference:
+//   31b (free, best quality) → 26b (free, lighter) → Flash (paid, always available)
+// Free models have cost=0 but hard RPM/RPD limits enforced by limiter.ts.
+const LAB_CHAIN = ['gemma-4-31b-it', 'gemma-4-26b-a4b-it', 'gemini-2.5-flash'] as const;
+const PAID_FALLBACK = 'gemini-2.5-flash';
 
 const LAB_WRITER_SYSTEM_PROMPT = `Você é a IA Escritora de Simuladores Científicos do Scaffl.
 Sua missão é gerar um código HTML5 autocontido (incluindo HTML, Tailwind CSS para estilos e JavaScript para física/lógica no Canvas) com base nas ideias dos estudantes.
@@ -25,6 +28,8 @@ export interface SimAgentResult {
   editScope: string;
   patchedFunctions: string[];
   tokensUsed: number;
+  tokensIn: number;
+  tokensOut: number;
   creditsUsed: number;
   modelUsed: string;
 }
@@ -85,10 +90,11 @@ async function _callModel(params: {
   }
 
   const creditsUsed = calcCredits(modelId, chatResult.inputTokens, chatResult.cachedTokens, chatResult.outputTokens);
-  const tokensUsed = chatResult.inputTokens + chatResult.outputTokens;
+  const tokensIn = chatResult.inputTokens;
+  const tokensOut = chatResult.outputTokens;
 
   console.log(
-    `[Lab Agent] Done. Model: ${modelId}, in=${chatResult.inputTokens}, cached=${chatResult.cachedTokens}, out=${chatResult.outputTokens}, credits=${creditsUsed}`
+    `[Lab Agent] Done. Model: ${modelId}, in=${tokensIn}, cached=${chatResult.cachedTokens}, out=${tokensOut}, credits=${creditsUsed}`
   );
 
   return {
@@ -99,7 +105,9 @@ async function _callModel(params: {
     editPlan: null,
     editScope: 'surgical',
     patchedFunctions: [],
-    tokensUsed,
+    tokensUsed: tokensIn + tokensOut,
+    tokensIn,
+    tokensOut,
     creditsUsed,
     modelUsed: modelId,
   };
@@ -115,20 +123,56 @@ export async function runSimAgent(params: {
 }): Promise<SimAgentResult> {
   const { userId } = params;
 
-  // Build the fallback chain: requested/default → Flash
-  const primary = params.modelToUse ?? getDefaultModel()?.id ?? FALLBACK_MODEL;
-  const chain = primary === FALLBACK_MODEL
-    ? [FALLBACK_MODEL]
-    : [primary, FALLBACK_MODEL];
+  // Build effective chain: requested override → full LAB_CHAIN with RPD pre-filter
+  const requestedModel = params.modelToUse;
 
-  const factories = chain.map((modelId) => () =>
-    _callModel({ ...params, modelId })
-  );
+  let chain: string[];
+  if (requestedModel) {
+    // Explicit override: try requested → Flash
+    chain = requestedModel === PAID_FALLBACK
+      ? [PAID_FALLBACK]
+      : [requestedModel, PAID_FALLBACK];
+  } else {
+    // Standard chain: skip free models whose RPD is exhausted today
+    chain = [];
+    for (const modelId of LAB_CHAIN) {
+      if (isRPDExhausted(modelId)) {
+        console.log(`[Lab Agent] ${modelId} RPD exhausted for today, skipping`);
+        logQuotaEvent({ userId, surface: 'lab', event: 'rpd_skip', model: modelId });
+      } else {
+        chain.push(modelId);
+        // Flash is always the last resort — stop after adding it
+        if (modelId === PAID_FALLBACK) break;
+      }
+    }
+    // Safety: Flash must always be present
+    if (!chain.includes(PAID_FALLBACK)) chain.push(PAID_FALLBACK);
+  }
 
-  return retryWithFallback(factories, (fromIndex, err) => {
+  const firstInChain = chain[0];
+  const factories = chain.map((modelId) => () => _callModel({ ...params, modelId }));
+
+  const result = await retryWithFallback(factories, (fromIndex, err) => {
     const fromModel = chain[fromIndex];
-    console.warn(`[Lab Agent] ${fromModel} failed (${(err as any)?.status ?? (err as any)?.message}), falling back to ${chain[fromIndex + 1]}`);
-    logQuotaEvent({ userId, surface: 'lab', event: 'fallback', model: fromModel });
+    const toModel = chain[fromIndex + 1];
+    console.warn(`[Lab Agent] ${fromModel} failed (${(err as any)?.status ?? (err as any)?.message}), falling back to ${toModel}`);
     logQuotaEvent({ userId, surface: 'lab', event: '429', model: fromModel });
   });
+
+  // Increment RPD for the model that served the request (free models only)
+  incrementRPD(result.modelUsed);
+
+  // Full instrumentation: model served, tokens, spill flag
+  logQuotaEvent({
+    userId,
+    surface: 'lab',
+    event: 'request',
+    model: result.modelUsed,
+    tokensIn:  result.tokensIn,
+    tokensOut: result.tokensOut,
+    credits:   result.creditsUsed,
+    wasSpill:  result.modelUsed !== firstInChain,
+  });
+
+  return result;
 }

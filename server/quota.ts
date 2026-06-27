@@ -102,8 +102,7 @@ export function recordLabRequest(userId: string): void {
       lab_req_week_reset  = ?
     WHERE id = ?
   `).run(reqToday + 1, today, reqWeek + 1, week, userId);
-
-  logQuotaEvent({ userId, surface: 'lab', event: 'request' });
+  // Full event (model, tokens, was_spill) is logged by the caller after a successful AI response
 }
 
 // ── Petrus quota (weekly credits) ────────────────────────────────────────────
@@ -147,26 +146,33 @@ export function recordPetrusCredits(userId: string, credits: number): void {
 
 // ── Instrumentation ──────────────────────────────────────────────────────────
 
-export type QuotaEvent = 'request' | '429' | 'spill' | 'limit_hit' | 'queued' | 'fallback';
+// 'rpd_skip' = model skipped because daily limit already exhausted (no API call made)
+export type QuotaEvent = 'request' | '429' | 'rpd_skip' | 'limit_hit';
 
 export function logQuotaEvent(params: {
   userId?: string;
   surface: 'lab' | 'petrus';
   event: QuotaEvent;
   model?: string;
+  tokensIn?: number;
+  tokensOut?: number;
   credits?: number;
+  wasSpill?: boolean;
 }): void {
   try {
     db.prepare(`
-      INSERT INTO quota_metrics (id, surface, event, model, userId, credits)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO quota_metrics (id, surface, event, model, userId, tokens_in, tokens_out, credits, was_spill)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       crypto.randomUUID(),
       params.surface,
       params.event,
       params.model ?? null,
       params.userId ?? null,
-      params.credits ?? 0,
+      params.tokensIn  ?? 0,
+      params.tokensOut ?? 0,
+      params.credits   ?? 0,
+      params.wasSpill  ? 1 : 0,
     );
   } catch {
     // Metrics are best-effort — never block a request over a logging failure
