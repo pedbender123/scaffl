@@ -56,17 +56,8 @@ const baseFunctionDeclarations = [
   },
 ];
 
-// Only register the professor contact tool if a WhatsApp number is configured
 function buildToolDeclarations() {
-  const decls = [...baseFunctionDeclarations];
-  if (config.professorWhatsApp) {
-    decls.push({
-      name: 'solicitar_contato_professor',
-      description: 'Gera e retorna o link de contato direto do WhatsApp do professor responsável pela plataforma. Chame esta ferramenta se o estudante expressar que precisa de ajuda direta de um humano, atendimento presencial ou quiser o contato do professor.',
-      parameters: { type: 'OBJECT', properties: {} }
-    });
-  }
-  return [{ functionDeclarations: decls }];
+  return [{ functionDeclarations: baseFunctionDeclarations }];
 }
 
 function queryDisciplinas(userId: string) {
@@ -229,18 +220,6 @@ async function _generateChatResponse(
               toolResult = queryDisciplinaConteudo((args as any).disciplinaId);
             } else if (name === 'listar_atividades') {
               toolResult = queryAtividades(userId);
-            } else if (name === 'solicitar_contato_professor') {
-              const user = db.prepare('SELECT name FROM users WHERE id = ?').get(userId) as { name: string } | undefined;
-              const studentName = user ? user.name : 'Estudante';
-              const textMessage = `Olá, sou o ${studentName} e preciso de ajuda com as atividades no Scaffl!`;
-              const encodedText = encodeURIComponent(textMessage);
-              const waNumber = config.professorWhatsApp;
-              toolResult = waNumber
-                ? {
-                    whatsappUrl: `https://wa.me/${waNumber}?text=${encodedText}`,
-                    message: 'Link de contato direto do WhatsApp do professor gerado. Você DEVE exibir este link no formato Markdown: [Clique aqui para falar com o professor no WhatsApp](URL_WHATSAPP), onde URL_WHATSAPP é o link exato gerado no campo whatsappUrl.'
-                  }
-                : { error: 'Contato por WhatsApp não configurado nesta instância.' };
             } else {
               toolResult = { error: 'Ferramenta desconhecida.' };
             }

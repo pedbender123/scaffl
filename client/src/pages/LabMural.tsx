@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { api, LabProject } from '../lib/api';
 import { FlaskConical, Plus, Clock, User, Trash2, Loader2, Building2, Star } from 'lucide-react';
 import { cn } from '../lib/utils';
+import ConfirmDialog from '../components/ConfirmDialog';
 
 export default function LabMural() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ export default function LabMural() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [tab, setTab] = useState<'mine' | 'institution'>('mine');
+  const [confirmCreate, setConfirmCreate] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     api.lab.getProjects()
@@ -20,25 +23,34 @@ export default function LabMural() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleCreate = async () => {
+  const handleCreate = () => setConfirmCreate(true);
+
+  const doCreate = async () => {
+    setConfirmCreate(false);
     setCreating(true);
     try {
       const project = await api.lab.createProject({ title: 'Novo Projeto' });
       navigate(`/lab/${project.id}`);
     } catch (err: any) {
-      alert(err.message || 'Erro ao criar projeto.');
+      console.error(err.message || 'Erro ao criar projeto.');
       setCreating(false);
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent, projectId: string) => {
+  const handleDelete = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
-    if (!confirm('Tem certeza que deseja deletar este projeto?')) return;
+    setConfirmDeleteId(projectId);
+  };
+
+  const doDelete = async () => {
+    if (!confirmDeleteId) return;
+    const id = confirmDeleteId;
+    setConfirmDeleteId(null);
     try {
-      await api.lab.deleteProject(projectId);
-      setProjects(prev => prev.filter(p => p.id !== projectId));
+      await api.lab.deleteProject(id);
+      setProjects(prev => prev.filter(p => p.id !== id));
     } catch (err: any) {
-      alert(err.message || 'Erro ao deletar projeto.');
+      console.error(err.message || 'Erro ao deletar projeto.');
     }
   };
 
@@ -57,6 +69,7 @@ export default function LabMural() {
   }
 
   return (
+    <>
     <div className="min-h-full bg-slate-50 dark:bg-slate-950 font-sans">
       {/* Header */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-5">
@@ -205,10 +218,31 @@ export default function LabMural() {
         )}
       </div>
     </div>
+
+    <ConfirmDialog
+      open={confirmCreate}
+      title="Criar novo projeto?"
+      message="Um novo projeto em branco será adicionado ao seu Lab. Você poderá renomeá-lo e começar a construir o simulador."
+      confirmLabel="Criar projeto"
+      onConfirm={doCreate}
+      onCancel={() => setConfirmCreate(false)}
+    />
+
+    <ConfirmDialog
+      open={!!confirmDeleteId}
+      title="Deletar este projeto?"
+      message="Esta ação é permanente e não pode ser desfeita. O simulador e todo o histórico de mensagens serão removidos."
+      confirmLabel="Deletar"
+      cancelLabel="Cancelar"
+      danger
+      onConfirm={doDelete}
+      onCancel={() => setConfirmDeleteId(null)}
+    />
+    </>
   );
 }
 
-function StarRating({ 
+function StarRating({
   value, 
   onChange, 
   readonly = false 
