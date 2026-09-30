@@ -15,12 +15,12 @@ versões seguem [SemVer](https://semver.org/lang/pt-BR/) (`vMAJOR.MINOR.PATCH`).
 
 ### Alterado
 - **Licença:** de MIT para a Licença de Uso para Pesquisa SCAFFL (uso não comercial, citação obrigatória, sem redistribuição). A v0.1.0 continua sob MIT.
-- A rota `/` leva direto ao login (a landing page institucional fica só no site).
+- A rota `/` abre direto a tela de login/cadastro.
 - `docker-compose.yml` genérico para instalação própria.
 
 ### Removido
 - Ferramenta de contato por WhatsApp.
-- Landing page e material de pesquisa (disponíveis no site do projeto).
+- Conteúdo institucional e de pesquisa (disponível em https://scaffl.com.br).
 
 ## [0.1.0] — 2026-06
 

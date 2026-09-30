@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -14,34 +14,8 @@ import ClassPage from './pages/ClassPage';
 import ActivitiesAdminPage from './pages/ActivitiesAdminPage';
 import ClassroomsAdminPage from './pages/ClassroomsAdminPage';
 import IaUsageAdminPage from './pages/IaUsageAdminPage';
-import { Loader2 } from 'lucide-react';
-
-const Spinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-    <Loader2 className="animate-spin text-primary" size={32} />
-  </div>
-);
-
-/**
- * A landing page (com o conteúdo de pesquisa) existe só no repositório privado/site.
- * No repositório público o arquivo não é exportado: o glob fica vazio e "/" vai para /login.
- */
-const landingModules = import.meta.glob<{ default: React.ComponentType }>('./pages/LandingPage.tsx');
-const landingLoader = Object.values(landingModules)[0];
-const LandingPage = landingLoader ? lazy(landingLoader) : null;
-
-/** Root "/": landing page (se existir) se não autenticado, redireciona para /mural se autenticado. */
-function RootRoute() {
-  const { user, loading } = useAuth();
-  if (loading) return <Spinner />;
-  if (user) return <Navigate to="/mural" replace />;
-  if (!LandingPage) return <Navigate to="/login" replace />;
-  return (
-    <Suspense fallback={<Spinner />}>
-      <LandingPage />
-    </Suspense>
-  );
-}
+import Spinner from './components/Spinner';
+import RootRoute from './RootRoute';
 
 /** Protege rotas do app — redireciona para /login se não autenticado. */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -57,7 +31,7 @@ export default function App() {
       <ThemeProvider>
         <BrowserRouter>
           <Routes>
-            {/* Landing — pública */}
+            {/* Raiz */}
             <Route path="/" element={<RootRoute />} />
 
             {/* Auth */}
