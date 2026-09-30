@@ -24,6 +24,7 @@ export default function LabEditor() {
   const [chatHidden, setChatHidden] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [loadingStage, setLoadingStage] = useState<'thinking' | 'coding' | null>(null);
+  const [queueWarning, setQueueWarning] = useState(false);
 
   const [isDrawing, setIsDrawing] = useState(false);
   const [drawingColor, setDrawingColor] = useState('#ef4444');
@@ -216,6 +217,7 @@ export default function LabEditor() {
     setLoadingStage('thinking');
 
     const stageTimer = setTimeout(() => setLoadingStage('coding'), 3000);
+    const queueWarningTimer = setTimeout(() => setQueueWarning(true), 15_000);
 
     let drawingScreenshotUrl: string | undefined = undefined;
 
@@ -283,7 +285,9 @@ export default function LabEditor() {
     } finally {
       setLoading(false);
       setLoadingStage(null);
+      setQueueWarning(false);
       clearTimeout(stageTimer);
+      clearTimeout(queueWarningTimer);
     }
   };
 
@@ -424,6 +428,11 @@ export default function LabEditor() {
                 <div className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div className={cn("h-full bg-primary transition-all duration-1000 ease-in-out", loadingStage === 'coding' ? "w-[80%]" : "w-[20%]")} />
                 </div>
+                {queueWarning && (
+                  <p className="text-[11px] text-amber-500 text-center mt-1">
+                    Alto número de pedidos simultâneos — não feche nem recarregue a página.
+                  </p>
+                )}
               </div>
             </div>
           )}

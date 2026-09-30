@@ -14,6 +14,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { compressProjectContext } from './labContextCompressor.js';
 import { getUserCreditLimit } from './ai.js';
 import { validateConfig, config } from './config.js';
+import { checkLabQuota, recordLabRequest, getQuotaSummary } from './quota.js';
+import { getQueueDepth } from './limiter.js';
 import { encryptSecret } from './crypto/secrets.js';
 import { getActiveKey, invalidateKeyCache } from './providers/registry.js';
 
@@ -69,6 +71,9 @@ app.get('/api/auth/me', auth.authenticate, (req: any, res) => {
   user.creditsMonthly = (chatCredits?.total || 0) + (labCredits?.total || 0);
 
   user.institutions = getUserInstitutionIds(user.id);
+  if (config.isCloud) {
+    user.quota = getQuotaSummary(req.user.id);
+  }
   delete user.password;
   res.json(user);
 });
@@ -490,9 +495,6 @@ app.get('/api/lab/projects', auth.authenticate, (req: any, res) => {
 
 // POST /api/lab/projects — Criar novo projeto
 app.post('/api/lab/projects', auth.authenticate, (req: any, res) => {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ error: 'A plataforma de simuladores foi finalizada e novas criações estão bloqueadas.' });
-  }
   const userId = req.user.id;
   const { title } = req.body;
   if (!title) return res.status(400).json({ error: 'title é obrigatório.' });
@@ -551,9 +553,6 @@ app.get('/api/lab/projects/:id', auth.authenticate, (req: any, res) => {
 
 // PUT /api/lab/projects/:id/title — Renomear projeto
 app.put('/api/lab/projects/:id/title', auth.authenticate, (req: any, res) => {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ error: 'A plataforma de simuladores foi finalizada e edições estão bloqueadas.' });
-  }
   const userId = req.user.id;
   const { id } = req.params;
   const { title } = req.body;
@@ -569,9 +568,6 @@ app.put('/api/lab/projects/:id/title', auth.authenticate, (req: any, res) => {
 
 // DELETE /api/lab/projects/:id — Deletar projeto
 app.delete('/api/lab/projects/:id', auth.authenticate, (req: any, res) => {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ error: 'A plataforma de simuladores foi finalizada e edições estão bloqueadas.' });
-  }
   const userId = req.user.id;
   const { id } = req.params;
 
@@ -583,10 +579,7 @@ app.delete('/api/lab/projects/:id', auth.authenticate, (req: any, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/lab/projects/:id/messages', auth.authenticate, limiter, async (req: any, res) => {
-  if (!req.user.isAdmin) {
-    return res.status(403).json({ error: 'A plataforma de simuladores foi finalizada e novas edições estão bloqueadas.' });
-  }
+app.post('/api/lab/projects/:id/messages', auth.authenticate, async (req: any, res) => {
   const userId = req.user.id;
   const { id: projectId } = req.params;
   const { content, modelToUse, userImageUrl } = req.body;
@@ -601,6 +594,19 @@ app.post('/api/lab/projects/:id/messages', auth.authenticate, limiter, async (re
 
   if (!rawProject) return res.status(404).json({ error: 'Projeto não encontrado.' });
   if (rawProject.userId !== userId) return res.status(403).json({ error: 'Apenas o dono pode editar o projeto.' });
+
+  // Lab quota check (request-based, daily + weekly) — cloud only
+  if (config.isCloud) {
+    const quotaCheck = checkLabQuota(userId);
+    if (!quotaCheck.allowed) {
+      return res.status(402).json({ error: quotaCheck.reason });
+    }
+    // Token limit per request: reject oversized HTML payloads before calling AI
+    const estimatedChars = (rawProject.htmlContent?.length ?? 0) + content.length;
+    if (estimatedChars > quotaCheck.config.labTokenLimit * 4) {
+      return res.status(413).json({ error: 'O simulador excedeu o limite de tamanho para edição. Crie um novo projeto.' });
+    }
+  }
 
   const project = {
     ...rawProject,
@@ -631,22 +637,9 @@ app.post('/api/lab/projects/:id/messages', auth.authenticate, limiter, async (re
     }
   }
 
-  // Verifica limite de créditos de IA mensal (soma chat + lab)
-  const monthlyChat = db.prepare(`
-    SELECT SUM(creditsUsed) as total FROM messages
-    WHERE userId = ? AND createdAt >= DATETIME('now', '-30 days')
-  `).get(userId) as { total: number };
-  const monthlyLab = db.prepare(`
-    SELECT SUM(creditsUsed) as total FROM lab_messages
-    WHERE userId = ? AND createdAt >= DATETIME('now', '-30 days')
-  `).get(userId) as { total: number };
-  const currentMonthlyTotal = (monthlyChat?.total || 0) + (monthlyLab?.total || 0);
-
-  const { creditLimit } = getUserCreditLimit(userId);
-  if (currentMonthlyTotal > creditLimit) {
-    const limitLabel = creditLimit >= 1_000_000 ? '1M' : '100k';
-    return res.status(402).json({ error: `Limite mensal de ${limitLabel} créditos de IA atingido.` });
-  }
+  // Queue depth warning: tell the client if the model is under load
+  const activeModel = modelToUse ?? 'gemini-2.5-flash';
+  const queueDepth = getQueueDepth(activeModel);
 
   // Salva mensagem do usuário
   const userMsgId = crypto.randomUUID();
@@ -661,7 +654,13 @@ app.post('/api/lab/projects/:id/messages', auth.authenticate, limiter, async (re
       recentMessages,
       modelToUse,
       userImageUrl,
+      userId,
     });
+
+    // Record successful Lab request against quota (cloud only)
+    if (config.isCloud) {
+      recordLabRequest(userId);
+    }
 
     // Salva resposta do assistente
     const assistantMsgId = crypto.randomUUID();
@@ -702,6 +701,8 @@ app.post('/api/lab/projects/:id/messages', auth.authenticate, limiter, async (re
       htmlContent: agentResult.htmlContent,
       editScope: agentResult.editScope,
       patchedFunctions: agentResult.patchedFunctions,
+      queueDepth,
+      modelUsed: agentResult.modelUsed,
     });
 
     // Comprimir contexto de forma assíncrona, sem bloquear resposta
@@ -788,6 +789,39 @@ app.get('/api/admin/security/runs/:runId', auth.authenticate, requireAdmin, (req
     'SELECT * FROM security_test_results WHERE runId = ? ORDER BY severity ASC'
   ).all(runId);
   res.json({ ...run as any, results });
+});
+
+// ==================== QUOTA ROUTES ====================
+
+// GET /api/auth/quota — current user's quota summary
+app.get('/api/auth/quota', auth.authenticate, (req: any, res) => {
+  if (config.isSelfHosted) {
+    return res.json({ selfHosted: true });
+  }
+  res.json(getQuotaSummary(req.user.id));
+});
+
+// PATCH /api/admin/users/:userId/plan — promote/demote a user's plan (admin only)
+app.patch('/api/admin/users/:userId/plan', auth.authenticate, requireAdmin, (req, res) => {
+  const { userId } = req.params;
+  const { plan } = req.body;
+  if (!['free', 'pro'].includes(plan)) {
+    return res.status(400).json({ error: "plan deve ser 'free' ou 'pro'." });
+  }
+  db.prepare('UPDATE users SET plan = ? WHERE id = ?').run(plan, userId);
+  res.json({ ok: true, userId, plan });
+});
+
+// GET /api/admin/quota-metrics — recent quota events (admin only, for Onda 3 UI)
+app.get('/api/admin/quota-metrics', auth.authenticate, requireAdmin, (req, res) => {
+  const rows = db.prepare(`
+    SELECT surface, event, model, COUNT(*) as count, SUM(credits) as totalCredits
+    FROM quota_metrics
+    WHERE ts >= datetime('now', '-7 days')
+    GROUP BY surface, event, model
+    ORDER BY count DESC
+  `).all();
+  res.json(rows);
 });
 
 // ==================== IA USAGE ROUTE (Admin only) ====================

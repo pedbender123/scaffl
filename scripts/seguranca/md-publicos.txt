@@ -1,0 +1,8 @@
+# Únicos arquivos .md liberados no repositório público (regex por linha).
+# Todo .md fora desta lista é tratado como material interno e bloqueia a publicação.
+^README\.md$
+^CHANGELOG\.md$
+^CLAUDE\.md$
+^CONTRIBUTING\.md$
+^SECURITY\.md$
+^\.github/pull_request_template\.md$

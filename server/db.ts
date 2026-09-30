@@ -349,6 +349,45 @@ if (modelCount === 0) {
 import { runSimAgentMigration } from './migrations/add_simagent_columns.js';
 runSimAgentMigration(db);
 
+// Onda 2: quota system columns
+const _quotaCols = db.prepare("PRAGMA table_info(users)").all() as any[];
+const _quotaMigrations: { name: string; sql: string }[] = [
+  { name: 'plan',                    sql: "ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free'" },
+  { name: 'lab_req_today',           sql: "ALTER TABLE users ADD COLUMN lab_req_today INTEGER DEFAULT 0" },
+  { name: 'lab_req_today_reset',     sql: "ALTER TABLE users ADD COLUMN lab_req_today_reset TEXT" },
+  { name: 'lab_req_week',            sql: "ALTER TABLE users ADD COLUMN lab_req_week INTEGER DEFAULT 0" },
+  { name: 'lab_req_week_reset',      sql: "ALTER TABLE users ADD COLUMN lab_req_week_reset TEXT" },
+  { name: 'petrus_credits_week',     sql: "ALTER TABLE users ADD COLUMN petrus_credits_week INTEGER DEFAULT 0" },
+  { name: 'petrus_credits_week_reset', sql: "ALTER TABLE users ADD COLUMN petrus_credits_week_reset TEXT" },
+];
+for (const m of _quotaMigrations) {
+  if (!_quotaCols.find((c: any) => c.name === m.name)) db.exec(m.sql);
+}
+
+// Quota metrics table for instrumentation (RPM, 429s, spills, fallbacks)
+db.exec(`
+  CREATE TABLE IF NOT EXISTS quota_metrics (
+    id TEXT PRIMARY KEY,
+    ts DATETIME DEFAULT CURRENT_TIMESTAMP,
+    surface TEXT NOT NULL,
+    event TEXT NOT NULL,
+    model TEXT,
+    userId TEXT,
+    tokens_in INTEGER DEFAULT 0,
+    tokens_out INTEGER DEFAULT 0,
+    credits INTEGER DEFAULT 0,
+    was_spill INTEGER DEFAULT 0
+  );
+`);
+
+// Idempotent column additions for instances that already have the table
+(function migrateQuotaMetrics() {
+  const cols = (db.prepare("PRAGMA table_info(quota_metrics)").all() as any[]).map((c: any) => c.name);
+  if (!cols.includes('tokens_in'))  db.exec("ALTER TABLE quota_metrics ADD COLUMN tokens_in INTEGER DEFAULT 0");
+  if (!cols.includes('tokens_out')) db.exec("ALTER TABLE quota_metrics ADD COLUMN tokens_out INTEGER DEFAULT 0");
+  if (!cols.includes('was_spill'))  db.exec("ALTER TABLE quota_metrics ADD COLUMN was_spill INTEGER DEFAULT 0");
+})();
+
 // Ensure system user exists
 db.prepare(`
   INSERT OR IGNORE INTO users (id, name, email, password, role, isAdmin)

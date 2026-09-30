@@ -1,7 +1,29 @@
 {
-  "as_of": "2025-06-18",
+  "as_of": "2026-06-27",
   "note": "Prices in BRL (R$5.50/USD estimate) per 1M tokens. VERIFY at each provider's pricing page before going to production — model names and prices change frequently. The admin can edit all values in Admin → Inteligência Artificial.",
   "models": [
+    {
+      "id": "gemma-4-31b-it",
+      "provider": "google-free",
+      "display_name": "Gemma 4 31B (Free)",
+      "input_cost_per_1m": 0,
+      "input_cached_cost_per_1m": 0,
+      "output_cost_per_1m": 0,
+      "currency": "BRL",
+      "enabled": 1,
+      "is_default": 0
+    },
+    {
+      "id": "gemma-4-26b-a4b-it",
+      "provider": "google-free",
+      "display_name": "Gemma 4 26B (Free)",
+      "input_cost_per_1m": 0,
+      "input_cached_cost_per_1m": 0,
+      "output_cost_per_1m": 0,
+      "currency": "BRL",
+      "enabled": 1,
+      "is_default": 0
+    },
     {
       "id": "gemini-2.5-flash",
       "provider": "google",

@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "Se você usar o SCAFFL em pesquisa, ensino ou publicações, cite-o como abaixo. / If you use SCAFFL, please cite it as below."
+title: "SCAFFL: plataforma de IA educacional para pesquisa"
+type: software
+authors:
+  - family-names: "Bender"
+    given-names: "Pedro"
+repository-code: "https://github.com/pedbender123/scaffl"
+url: "https://scaffl.com.br"
+license-url: "https://github.com/pedbender123/scaffl/blob/main/LICENSE"
+version: "0.2.0"
+keywords:
+  - educação
+  - inteligência artificial
+  - tutoria inteligente
+  - ensino de ciências

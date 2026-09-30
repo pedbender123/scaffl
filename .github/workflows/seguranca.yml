@@ -1,0 +1,31 @@
+name: seguranca
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  pull-requests: read   # gitleaks lista os commits do PR (403 em repo privado sem isso)
+
+jobs:
+  segredos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scanner próprio (histórico completo)
+        run: scripts/seguranca/verificar-segredos.sh --historico
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  portao-publico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nada de material interno no público
+        run: scripts/seguranca/verificar-publico.sh .

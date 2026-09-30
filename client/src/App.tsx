@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import LandingPage from './pages/LandingPage';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import PersonasPage from './pages/PersonasPage';
@@ -15,21 +14,8 @@ import ClassPage from './pages/ClassPage';
 import ActivitiesAdminPage from './pages/ActivitiesAdminPage';
 import ClassroomsAdminPage from './pages/ClassroomsAdminPage';
 import IaUsageAdminPage from './pages/IaUsageAdminPage';
-import { Loader2 } from 'lucide-react';
-
-const Spinner = () => (
-  <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-    <Loader2 className="animate-spin text-primary" size={32} />
-  </div>
-);
-
-/** Root "/": landing page se não autenticado, redireciona para /mural se autenticado. */
-function RootRoute() {
-  const { user, loading } = useAuth();
-  if (loading) return <Spinner />;
-  if (user) return <Navigate to="/mural" replace />;
-  return <LandingPage />;
-}
+import Spinner from './components/Spinner';
+import RootRoute from './RootRoute';
 
 /** Protege rotas do app — redireciona para /login se não autenticado. */
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -45,7 +31,7 @@ export default function App() {
       <ThemeProvider>
         <BrowserRouter>
           <Routes>
-            {/* Landing — pública */}
+            {/* Raiz */}
             <Route path="/" element={<RootRoute />} />
 
             {/* Auth */}

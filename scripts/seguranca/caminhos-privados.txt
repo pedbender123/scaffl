@@ -1,0 +1,8 @@
+# Caminhos (regex POSIX estendida, relativos à raiz) que só existem no repositório privado.
+^\.agents/
+^pesquisa/
+^ideias/
+^experimentos/
+^docs/
+^publicacao/
+^notas/

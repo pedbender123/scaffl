@@ -1,21 +1,82 @@
-MIT License
+LICENÇA DE USO PARA PESQUISA — SCAFFL
+Versão 1.0
 
-Copyright (c) 2025 Pedro Bender
+Copyright (c) 2025-2026 Pedro Bender. Todos os direitos reservados, exceto
+os concedidos expressamente abaixo.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+"Software" significa o código-fonte, a documentação e os demais arquivos deste
+repositório. "Você" significa a pessoa física ou instituição que obtém o
+Software.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. PERMISSÕES
+   Desde que cumpra todas as condições desta licença, você pode, sem custo:
+   a) clonar, baixar, instalar e executar o Software;
+   b) estudar e modificar o Software para uso próprio;
+   c) usar o Software, original ou modificado, em atividades de pesquisa,
+      ensino e estudo sem fins comerciais, inclusive dentro de instituições de
+      ensino e grupos de pesquisa (por exemplo, instalar uma instância própria
+      para as suas turmas ou para o seu estudo).
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. CITAÇÃO OBRIGATÓRIA
+   Qualquer trabalho, publicação, apresentação, relatório ou produto acadêmico
+   que resulte do uso do Software deve citar o projeto SCAFFL, conforme o
+   arquivo CITATION.cff deste repositório (ou equivalente indicado pelos
+   autores).
+
+3. PROIBIÇÕES
+   Sem autorização prévia e por escrito do titular, você NÃO pode:
+   a) usar o Software, original ou modificado, com fins comerciais — incluindo
+      vendê-lo, licenciá-lo, oferecê-lo como serviço pago (SaaS, hospedagem,
+      consultoria baseada nele) ou incorporá-lo a produto ou serviço comercial;
+   b) distribuir, publicar, redistribuir, sublicenciar ou disponibilizar a
+      terceiros cópias do Software, no todo ou em parte, originais ou
+      modificadas, por qualquer meio;
+   c) remover ou alterar avisos de direitos autorais, desta licença ou de
+      atribuição.
+
+   Forks criados dentro da própria plataforma GitHub são permitidos apenas na
+   medida exigida pelos Termos de Serviço do GitHub e com a finalidade de
+   contribuir com este projeto; eles não autorizam nenhuma outra forma de
+   distribuição.
+
+4. CONTRIBUIÇÕES
+   Ao enviar uma contribuição (pull request, patch, sugestão de código), você
+   concede ao titular licença perpétua, mundial, gratuita e irrevogável para
+   usar, modificar, sublicenciar e distribuir essa contribuição como parte do
+   Software, sob esta ou outra licença.
+
+5. COMPONENTES DE TERCEIROS
+   Bibliotecas e dependências de terceiros continuam regidas por suas próprias
+   licenças.
+
+6. ENCERRAMENTO
+   O descumprimento de qualquer condição encerra automaticamente as permissões
+   concedidas por esta licença.
+
+7. AUSÊNCIA DE GARANTIA
+   O SOFTWARE É FORNECIDO "NO ESTADO EM QUE SE ENCONTRA", SEM GARANTIAS DE
+   QUALQUER TIPO, EXPRESSAS OU IMPLÍCITAS. EM NENHUMA HIPÓTESE OS AUTORES OU
+   TITULARES SERÃO RESPONSÁVEIS POR QUALQUER DANO, PERDA DE DADOS OU OUTRA
+   RESPONSABILIDADE DECORRENTE DO USO DO SOFTWARE.
+
+8. OUTROS USOS
+   Usos comerciais, redistribuição ou parcerias: entre em contato com o
+   titular pelo repositório https://github.com/pedbender123/scaffl.
+
+Versões do Software publicadas anteriormente sob outra licença (como MIT)
+continuam regidas pela licença com que foram publicadas.
+
+--------------------------------------------------------------------------------
+
+SCAFFL RESEARCH USE LICENSE — English summary (the Portuguese text above
+prevails in case of divergence)
+
+You may clone, install, run, study and modify the Software for your own
+non-commercial research, teaching and study, including within academic
+institutions. Any work resulting from its use must cite the SCAFFL project
+(see CITATION.cff). Without prior written permission you may NOT use it
+commercially (including selling it or offering it as a paid service) and you
+may NOT distribute, publish, redistribute or sublicense copies, in whole or in
+part, original or modified. Forks within GitHub are allowed only as required by
+GitHub's Terms of Service, for contributing to this project. Contributions are
+licensed to the copyright holder. Provided "AS IS", without warranty.

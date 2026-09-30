@@ -1,6 +1,7 @@
 {
   "name": "tutorai-root",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "workspaces": [
     "client",
     "server"

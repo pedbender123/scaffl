@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Bloqueia commits que incluam chaves/senhas ou arquivos sensíveis.
+# Ative uma vez com: scripts/seguranca/instalar-hooks.sh
+exec "$(git rev-parse --show-toplevel)/scripts/seguranca/verificar-segredos.sh" --staged

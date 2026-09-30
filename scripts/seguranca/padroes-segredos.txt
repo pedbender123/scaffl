@@ -1,0 +1,13 @@
+# Padrões (regex POSIX estendida) de chaves e credenciais.
+# Uma regex por linha. Linhas iniciadas por # são ignoradas.
+AKIA[0-9A-Z]{16}
+AIza[0-9A-Za-z_-]{35}
+sk-ant-[A-Za-z0-9_-]{20,}
+sk-(proj-)?[A-Za-z0-9_-]{32,}
+gh[pousr]_[A-Za-z0-9]{36}
+github_pat_[A-Za-z0-9_]{50,}
+xox[baprs]-[A-Za-z0-9-]{10,}
+-----BEGIN ([A-Z]+ )?PRIVATE KEY-----
+eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}
+(mongodb(\+srv)?|postgres(ql)?|mysql|redis|amqp)://[^:/[:space:]"']+:[^@/[:space:]"']+@
+(api[_-]?key|secret|password|passwd|senha|token)["']?[[:space:]]*[:=][[:space:]]*["'][^"'[:space:]]{16,}["']
