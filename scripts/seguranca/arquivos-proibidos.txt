@@ -1,0 +1,8 @@
+# Caminhos (regex POSIX estendida) que nunca podem ser versionados.
+(^|/)\.env$
+(^|/)\.env\.(local|production|prod|development|dev|test|staging)$
+\.(db|db-journal|db-wal|db-shm|sqlite|sqlite3)$
+\.(pem|key|p12|pfx|jks|keystore|kdbx|ovpn)$
+(^|/)id_(rsa|dsa|ecdsa|ed25519)$
+(^|/)[^/]*credentials[^/]*\.json$
+(^|/)service-account[^/]*\.json$

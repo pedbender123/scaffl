@@ -1,8 +1,8 @@
 # Scaffl — Self-Hosted AI Education Platform
 
-Scaffl is an open-core, self-hostable platform for AI-powered education. It lets you deploy AI tutors (personas), a simulation lab, and a classroom management system using your own API keys — no subscription, no data leaving your server.
+Scaffl is a source-available, self-hostable platform for AI-powered education. It lets you deploy AI tutors (personas), a simulation lab, and a classroom management system using your own API keys — no subscription, no data leaving your server.
 
-> **Status:** early public release — Onda 1 (separation & hygiene). Core features are stable; the admin UI for provider management is in active development.
+> **Status:** public research release. This repository contains the working application (it runs and records interactions to its database). Research analysis components are developed internally and are published here only when ready. See [CHANGELOG.md](CHANGELOG.md) for released versions.
 
 ---
 
@@ -27,7 +27,7 @@ Scaffl is an open-core, self-hostable platform for AI-powered education. It lets
 ### 1. Clone & install
 
 ```bash
-git clone https://github.com/your-org/scaffl.git
+git clone https://github.com/pedbender123/scaffl.git
 cd scaffl
 npm install
 cd server && npm install && cd ..
@@ -98,6 +98,37 @@ See [docker-compose.yml](docker-compose.yml) for volume mounts and environment v
 
 ---
 
-## License
+## Versions
 
-[MIT](LICENSE) © 2025 Pedro Bender
+The public repository is organized by functional, chronological releases:
+
+- `main` always holds the latest release.
+- Each release is tagged `vMAJOR.MINOR.PATCH` (e.g. `v0.2.0`) and described in [CHANGELOG.md](CHANGELOG.md).
+- To use a specific version: `git checkout v0.2.0`.
+
+---
+
+## Security
+
+Before contributing, enable the secret-scanning pre-commit hook:
+
+```bash
+scripts/seguranca/instalar-hooks.sh
+```
+
+Every push and pull request is also checked in CI (`.github/workflows/seguranca.yml`).
+
+---
+
+## License & citation
+
+Scaffl is **not** open source. It is licensed under the [SCAFFL Research Use License](LICENSE):
+
+- ✅ clone, install, run and modify it for your own **non-commercial research, teaching and study**;
+- ✅ **cite the project** in any resulting work — see [CITATION.cff](CITATION.cff) (GitHub's "Cite this repository" button);
+- ❌ no commercial use;
+- ❌ no distribution or redistribution of copies, original or modified.
+
+For other uses, open an issue or contact the maintainer.
+
+© 2025-2026 Pedro Bender

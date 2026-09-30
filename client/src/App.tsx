@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -22,11 +22,25 @@ const Spinner = () => (
   </div>
 );
 
-/** Root "/": redireciona para /mural se autenticado, ou para /login caso contrário. */
+/**
+ * A landing page (com o conteúdo de pesquisa) existe só no repositório privado/site.
+ * No repositório público o arquivo não é exportado: o glob fica vazio e "/" vai para /login.
+ */
+const landingModules = import.meta.glob<{ default: React.ComponentType }>('./pages/LandingPage.tsx');
+const landingLoader = Object.values(landingModules)[0];
+const LandingPage = landingLoader ? lazy(landingLoader) : null;
+
+/** Root "/": landing page (se existir) se não autenticado, redireciona para /mural se autenticado. */
 function RootRoute() {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
-  return <Navigate to={user ? '/mural' : '/login'} replace />;
+  if (user) return <Navigate to="/mural" replace />;
+  if (!LandingPage) return <Navigate to="/login" replace />;
+  return (
+    <Suspense fallback={<Spinner />}>
+      <LandingPage />
+    </Suspense>
+  );
 }
 
 /** Protege rotas do app — redireciona para /login se não autenticado. */
@@ -43,7 +57,7 @@ export default function App() {
       <ThemeProvider>
         <BrowserRouter>
           <Routes>
-            {/* Raiz */}
+            {/* Landing — pública */}
             <Route path="/" element={<RootRoute />} />
 
             {/* Auth */}
