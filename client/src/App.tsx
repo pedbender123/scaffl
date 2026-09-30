@@ -4,7 +4,6 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import LandingPage from './pages/LandingPage';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
 import PersonasPage from './pages/PersonasPage';
@@ -23,12 +22,11 @@ const Spinner = () => (
   </div>
 );
 
-/** Root "/": landing page se não autenticado, redireciona para /mural se autenticado. */
+/** Root "/": redireciona para /mural se autenticado, ou para /login caso contrário. */
 function RootRoute() {
   const { user, loading } = useAuth();
   if (loading) return <Spinner />;
-  if (user) return <Navigate to="/mural" replace />;
-  return <LandingPage />;
+  return <Navigate to={user ? '/mural' : '/login'} replace />;
 }
 
 /** Protege rotas do app — redireciona para /login se não autenticado. */
@@ -45,7 +43,7 @@ export default function App() {
       <ThemeProvider>
         <BrowserRouter>
           <Routes>
-            {/* Landing — pública */}
+            {/* Raiz */}
             <Route path="/" element={<RootRoute />} />
 
             {/* Auth */}

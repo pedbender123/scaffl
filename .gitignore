@@ -35,3 +35,6 @@ LEIA-ME-ANTES-DE-COMMITAR.md
 *.njsproj
 *.sln
 *.swp
+
+# Material interno (regras de agentes, pesquisa) — mantido no repositório privado
+.agents/
